@@ -22,6 +22,15 @@ impl DeviceManager {
         }
     }
 
+    pub fn is_connected(&self, address: &str) -> Result<bool, dbus::Error> {
+        let path = format!("/org/bluez/{}/dev_{}", self.hci, address);
+        let proxy = self
+            .bus
+            .with_proxy("org.bluez", &path, Duration::from_secs(10));
+        let connected: bool = proxy.get("org.bluez.Device1", "Connected")?;
+        Ok(connected)
+    }
+
     pub fn connect(&self, address: &str) -> Result<Box<dyn Sensor>, dbus::Error> {
         let path = format!("/org/bluez/{}/dev_{}", self.hci, address);
         let proxy = self
