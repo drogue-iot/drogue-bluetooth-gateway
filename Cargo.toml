@@ -10,5 +10,6 @@ description = "Drogue IoT Bluetooth LE Gateway"
 dbus = "0.9.0"
 log = "0.4.11"
 env_logger = "0.8.2"
+envconfig = "0.9.1"
 serde_json = "1.0"
 reqwest = { version = "0.10", features = ["blocking"] }

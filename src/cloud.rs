@@ -4,25 +4,26 @@ use reqwest;
 pub struct Cloud {
     client: reqwest::blocking::Client,
     url: String,
-    username: String,
+    login: String,
     password: String,
 }
 
 impl Cloud {
-    pub fn new(url: String, username: String, password: String) -> Cloud {
+    pub fn new(url: String, application: String, username: String, password: String) -> Cloud {
         Cloud {
             url: url,
             client: reqwest::blocking::Client::new(),
-            username: username,
+            login: format!("{}@{}", username, application),
             password: password,
         }
     }
 
+    // TODO publish as a gateway device
     pub fn publish(&self, data: String) -> Result<(), reqwest::Error> {
         let result = self
             .client
-            .post(&format!("{}/publish/device_id/{}", self.url, self.username))
-            .basic_auth(&self.username, Some(&self.password))
+            .post(&format!("{}/v1/temp/", self.url))
+            .basic_auth(&self.login, Some(&self.password))
             .body(data)
             .send()?;
         log::debug!("Response: {:?}", result);
