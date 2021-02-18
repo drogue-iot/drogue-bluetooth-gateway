@@ -1,6 +1,6 @@
 use dbus::blocking::Connection;
+use envconfig::Envconfig;
 use log;
-use std::env;
 use std::time::Duration;
 
 mod cloud;
@@ -12,42 +12,35 @@ use crate::cloud::Cloud;
 use crate::device::Sensor;
 use crate::manager::DeviceManager;
 
+
+#[derive(Envconfig)]
+pub struct Config {
+    #[envconfig(from = "BLUETOOTH_INTERFACE", default = "hci0")]
+    pub hci: String,
+    #[envconfig(from = "BLUETOOTH_DEVICE")]
+    pub device: String,
+    #[envconfig(from = "SENSOR_POLL_INTERVAL", default = "10")]
+    pub poll_interval: u64,
+    #[envconfig(from = "MOCK_DEVICE", default = "false")]
+    pub mock_device: bool,
+    #[envconfig(from = "DROGUE_HTTP_ENDPOINT")]
+    pub cloud_url: String,
+    #[envconfig(from = "DROGUE_APPLICATION")]
+    pub app: String,
+    #[envconfig(from = "DROGUE_USERNAME")]
+    pub username: String,
+    #[envconfig(from = "DROGUE_PASSWORD")]
+    pub password: String,
+}
+
 pub fn main() {
     env_logger::init();
+    let config = Config::init_from_env().unwrap();
 
-    let hci = env::var("BLUETOOTH_INTERFACE")
-        .ok()
-        .unwrap_or("hci0".to_string());
+    let cloud = Cloud::new(config.cloud_url, config.app, config.username, config.password);
+    let poll_interval = Duration::from_secs(config.poll_interval);
 
-    let device =
-        env::var("BLUETOOTH_DEVICE").expect("BLUETOOTH_DEVICE environment variable is not set");
-
-    let poll_interval: Duration = Duration::from_secs(
-        env::var("SENSOR_POLL_INTERVAL")
-            .ok()
-            .map(|s| s.parse())
-            .unwrap_or(Ok(10 as u64))
-            .expect("error retrieving poll interval from SENSOR_POLL_INTERVAL"),
-    );
-
-    let mock_device: bool = env::var("MOCK_DEVICE")
-        .ok()
-        .map(|s| s.parse())
-        .unwrap_or(Ok(false))
-        .expect("error parsing mock_device from MOCK_DEVICE");
-
-    let cloud_url = env::var("DROGUE_HTTP_ENDPOINT")
-        .expect("unable to retrieve cloud http endpoint from DROGUE_HTTP_ENDPOINT");
-
-    let username = env::var("DROGUE_USERNAME")
-        .expect("unable to retrieve cloud username from DROGUE_USERNAME");
-
-    let password = env::var("DROGUE_PASSWORD")
-        .expect("unable to retrieve cloud password from DROGUE_PASSWORD");
-
-    let cloud = Cloud::new(cloud_url, username, password);
-
-    if mock_device {
+    if config.mock_device {
         loop {
             let s = "{\"temperature\": 24.3}";
             match cloud.publish(s.to_string()) {
@@ -63,12 +56,12 @@ pub fn main() {
     } else {
         let conn = Connection::new_system().expect("error creating dbus connection");
 
-        let device_manager = DeviceManager::new(&hci, conn);
+        let device_manager = DeviceManager::new(&config.hci, conn);
 
         log::info!("BLE Gateway Started");
 
         // TODO: Make it possible to manage multiple devices.
-        let address = &device.replace(":", "_");
+        let address = &config.device.replace(":", "_");
         let sensor: Box<dyn Sensor> = device_manager
             .connect(&address)
             .expect("unable to connect to device");
