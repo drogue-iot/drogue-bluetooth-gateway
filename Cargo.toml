@@ -1,5 +1,5 @@
 [package]
-name = "burrboard-gateway"
+name = "drogue-bluetooth-gateway"
 version = "0.1.0"
 authors = ["Ulf Lilleengen <ulf.lilleengen@gmail.com>"]
 edition = "2018"

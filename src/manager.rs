@@ -4,8 +4,8 @@ use log;
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::board::*;
 use crate::device::*;
+use crate::thermometer::*;
 
 pub struct DeviceManager {
     hci: String,
@@ -31,7 +31,7 @@ impl DeviceManager {
         Ok(connected)
     }
 
-    pub fn connect(&self, address: &str) -> Result<BurrBoard, dbus::Error> {
+    pub fn connect(&self, address: &str) -> Result<Box<dyn Sensor>, dbus::Error> {
         let path = format!("/org/bluez/{}/dev_{}", self.hci, address);
         let proxy = self
             .bus
@@ -58,10 +58,17 @@ impl DeviceManager {
 
         let name: String = proxy.get("org.bluez.Device1", "Name")?;
         log::info!("Connected to {}", name);
-        Ok(BurrBoard::new(Device::new(
+        let uuids: Vec<String> = proxy.get("org.bluez.Device1", "UUIDs")?;
+
+        let (idx, _) = uuids
+            .iter()
+            .enumerate()
+            .find(|(_, n)| *n == ENVIRONMENTAL_SENSING_UUID)
+            .expect("Unable to locate environmental sensing service");
+
+        Ok(Box::new(Thermometer::new(Device::new(
             self.bus.clone(),
-            self.hci.clone(),
-            address.to_string(),
-        )))
+            format!("{}/service{:04}/char{:04}", path, idx + 1, 2),
+        ))))
     }
 }
